@@ -84,6 +84,7 @@ while True:
     my_file = cur_dir + request_path
 
     # Implement request methods
+    handle_request(request_method)
 
 
     if request_method == 'GET':

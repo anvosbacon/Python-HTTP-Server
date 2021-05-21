@@ -53,7 +53,6 @@ class my_webserver:
             print(http_response)
 
             
-
             # Send response
             self.connect_socket.sendall(http_response)
             print("Request fulfilled!")

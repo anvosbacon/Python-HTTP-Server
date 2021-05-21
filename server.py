@@ -1,134 +1,153 @@
+import os
 import re
 import socket
 
 HOST = '127.0.0.1'
 PORT = 9000
 
-print(__file__)
-curr_dir = re.sub('/$', 'oo', __file__)
-print(curr_dir)
-
-# Helper functions
-def parse_request(request):
-    split_1 = request.split('\r\n', 1)
-    line = split_1[0]
-
-    split_2 = split_1[1].split('\r\n\r\n', 1)
-    headers = split_2[0]
-    body = split_2[1]
-
-    split_3 = line.split(' ')
-    method = split_3[0]
-    path = split_3[1]
-    protocol = split_3[2]
-
-    return method, path, protocol, line, headers, body
-
-# GET method
-def http_GET(my_file):
-    file = open(my_file, 'r')
-    response_body = file.read()
-
-# POST method
-def http_POST():
-    pass
-
-# DELETE method
-def http_DELETE():
-    pass
-
-def handle_request(method, my_file):
-    if method == 'GET':
-        http_GET(my_file)
-    elif method == 'POST':
-        http_POST(my_file)
-    elif method == 'DELETE':
-        http_DELETE(my_file)
-    else:
-        print("error")
-
-
-# Set up socket
-listen_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-listen_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-listen_socket.bind((HOST, PORT))
-listen_socket.listen(1)
-print(f'Serving HTTP on port {PORT} ...')
-
-# Handle requests
-while True:
-    connect_socket, client_address = listen_socket.accept()
-    request_data = connect_socket.recv(1024).decode('utf-8')
+class my_webserver:
+    def __init__(self, host, port):
+        self.listen_socket = listen_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        listen_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        listen_socket.bind((host, port))
+        listen_socket.listen(1)
+        print(f'Serving HTTP on port {PORT} ...')
     
-    # Parse request
-    (request_method,
-    request_path,
-    request_protocol,
-    request_line,
-    request_headers,
-    request_body) = parse_request(request_data)
+    def run(self):
+        while True:
+            self.connect_socket, self.client_address = self.listen_socket.accept()
+            self.request_data = self.connect_socket.recv(1024).decode('utf-8')
+
+            # Parse request
+            (self.request_method,
+            self.request_path,
+            self.request_protocol,
+            self.request_line,
+            self.request_headers,
+            self.request_body) = self.parse_request(self.request_data)
+
+            # Get file
+            directory = os.path.dirname(__file__)
+            if self.request_path == '/':
+                self.request_file = directory + '/index.html'
+            else:
+                self.request_file = directory + self.request_path
+
+            # Print request in console
+            print("\n\nRequest accepted!")
+            print("LINE:")
+            print(f"'{self.request_line}'")
+            print("HEADERS:")
+            print(f"'{self.request_headers}'")
+            print("BODY:")
+            print(f"'{self.request_body}'")
+
+            # Build response
+            http_response = self.build_response()
+            print('exited response')
+            print('Response:')
+
+            # # Build test response
+            # http_response = self.build_placeholder_response()
+
+            print(http_response)
+
+            
+
+            # Send response
+            self.connect_socket.sendall(http_response)
+            print("Request fulfilled!")
+            self.connect_socket.close()
     
-    # Print request
-    print("\n\nRequest accepted!")
-    print("LINE:")
-    print(f"'{request_line}'")
-    print("HEADERS:")
-    print(f"'{request_headers}'")
-    print("BODY:")
-    print(f"'{request_body}'")
+    def parse_request(self, request):
+        split_1 = request.split('\r\n', 1)
+        line = split_1[0]
 
-    # Get file
-    cur_dir = re.sub('/[^/]*$','', __file__)
-    if request_path == '/':
-        request_path = '/index.html'
-    my_file = cur_dir + request_path
+        split_2 = split_1[1].split('\r\n\r\n', 1)
+        headers = split_2[0]
+        body = split_2[1]
 
-    # Implement request methods
-    handle_request(request_method)
+        split_3 = line.split(' ')
+        method = split_3[0]
+        path = split_3[1]
+        protocol = split_3[2]
 
+        return method, path, protocol, line, headers, body
 
-    if request_method == 'GET':
-        http_GET(my_file)
-        file = open(my_file, 'r')
-        response_body = file.read()
+    def build_response(self):
+        print("entered response")
+        response = None
+        if self.request_method == 'GET':
+            response = self.build_GET()
+        elif self.request_method == 'POST':
+            response = self.build_POST()
+        elif self.request_method == 'DELETE':
+            response = self.build_DELETE()
+        else:
+            response = f"""\
+HTTP/1.1 400 Bad Request
+Content-Type: text/html; charset=utf-8
+
+<html>
+    <head>
+        <title>Error</title>
+    </head>
+    <body>
+        <h1>HTTP/1.1 400 Bad Request</h1>
+    </body>
+</html>
+"""
+            print("I'm still in the indent")
+            response = response.encode('utf-8')
+        return response
+        
+    def build_placeholder_response(self):
+        formatted_request = self.request_data.replace('\n', '<br>')
+        response = f"""\
+HTTP/1.1 200 OK
+Content-Type: text/html; charset=utf-8
+
+<html>
+    <head>
+        <title>Hello</title>
+    </head>
+    <body>
+        <h1>Hello from the web!</h1>
+        <h2>Here is the request:</h2>
+        <p>{formatted_request}</p>
+    </body>
+</html>
+"""
+        return response.encode('utf-8')
+    
+    def build_GET(self):
+        file = open(self.request_file, 'rb')
+        body = file.read()
         file.close()
 
-        response_line = 'HTTP/1.1 200 OK\n'
-        response_header = 'Content-Type: text/html\n\n'
-        http_response = response_line + response_header + response_body
+        header = 'HTTP/1.1 200 OK\n'
 
-   
-   
-   
-   
-    elif request_method == 'POST':
-        print(f"\nClient is posting to '{request_path}':")
-        print(request_body)
-    
-    elif request_method == 'DELETE':
-        print(f"\nClient is deleting '{request_path}'")
-    
-    else:
-        print("\nHTTP method not recognized. Responding with hello")
+        if self.request_file.endswith('.jpg'):
+            mimetype = 'image/jpg'
+        elif self.request_file.endswith('.png'):
+            mimetype = 'image/png'
+        elif self.request_file.endswith('.ico'):
+            mimetype = 'image/vnd.microsoft.icon'
+        elif self.request_file.endswith('.css'):
+            mimetype = 'text/css'
+        else:
+            mimetype = 'text/html; charset=utf-8'
+        
+        header += 'Content-type: ' + mimetype + '\n\n'
+        return header.encode('utf-8') + body
 
-#     # Format string
-#     request_data = request_data.replace('\n', '<br>')
+    def build_POST(self):
+        post = re.sub('^.*=', '', self.request_body)
+        print(post)
+        return self.build_placeholder_response()
 
-#     http_response = f"""\
-# HTTP/1.1 200 OK
+    def build_DELETE(self):
+        return self.build_placeholder_response()
 
-# <html>
-#     <head>
-#         <title>Hello</title>
-#     </head>
-#     <body>
-#         <h1>Hello from the web!</h1>
-#         <h2>Here is the request:</h2>
-#         <p>{request_data}</p>
-#     </body>
-# </html>
-# """
-    http_response = http_response.encode('utf-8')
-    connect_socket.sendall(http_response)
-    print("Request fulfilled!")
-    connect_socket.close()
+server = my_webserver(HOST, PORT)
+server.run()

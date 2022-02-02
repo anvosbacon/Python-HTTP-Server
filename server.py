@@ -1,6 +1,6 @@
-import os 
-import re 
-import socket 
+import os      # get file path
+import re      # regex
+import socket  # socket config
 
 HOST = '127.0.0.1'
 PORT = 9000
